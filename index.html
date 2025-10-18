@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HiDrive Wire Size Calculator</title>
+
+  <!-- PWA meta -->
+  <meta name="theme-color" content="#0f1115">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+
+  <style>
+    body { font-family: system-ui, sans-serif; background:#0f1115; color:#e8ebf2; margin:0; padding:16px; }
+    header { text-align:center; margin-bottom:20px; position:sticky; top:0; background:#0f1115; padding-bottom:12px; z-index:10; }
+    header img { max-width: 240px; height:auto; }
+    h1 { font-size:20px; margin:8px 0 0; }
+    label { font-size:14px; margin-top:12px; display:block; }
+    input, select { width:100%; padding:12px; border-radius:8px; border:1px solid #2b3240; background:#0f131a; color:#e8ebf2; font-size:16px; min-height:44px; }
+    .result { margin-top:20px; padding:20px; border-radius:12px; background:#171a21; text-align:center; }
+    .kpi { font-size:28px; font-weight:700; margin:6px 0; }
+    .ok { color:#10b981; }
+    .warn { color:#ef4444; }
+    @media (max-width:560px){ body{padding:20px} .result{padding:24px} }
+  </style>
+</head>
+<body>
+  <header>
+    <!-- Wide header logo -->
+    <img src="icons/logo-wide.png" alt="HiDrive Logo">
+    <h1>Wire Size Calculator</h1>
+  </header>
+
+  <!-- Inputs -->
+  <label for="voltage">System Voltage</label>
+  <select id="voltage">
+    <option value="12">12 V</option>
+    <option value="24">24 V</option>
+  </select>
+
+  <label for="amps">Load Amps (A)</label>
+  <input id="amps" type="number" inputmode="decimal" step="0.1" value="10">
+
+  <label for="length">One-way Length (m)</label>
+  <input id="length" type="number" inputmode="decimal" step="0.1" value="5">
+
+  <label for="drop">Allowable Voltage Drop (%)</label>
+  <select id="drop">
+    <option value="3">3%</option>
+    <option value="5" selected>5%</option>
+    <option value="10">10%</option>
+  </select>
+
+  <!-- Results -->
+  <div class="result">
+    <div>Voltage Drop (V)</div>
+    <div id="vd" class="kpi">—</div>
+    <div>Required CSA (mm²)</div>
+    <div id="req" class="kpi">—</div>
+    <div>Recommended Cable</div>
+    <div id="recLabel" class="kpi">—</div>
+  </div>
+
+<script>
+  // Cable sizes (edit to match your stock if needed)
+  const CABLES = [
+    {mm2: 1.13, label:"3 mm auto"},
+    {mm2: 1.84, label:"4 mm auto"},
+    {mm2: 4.59, label:"6 mm auto"},
+    {mm2: 8.37, label:"8 B&S"},
+    {mm2: 13.3, label:"6 B&S"},
+    {mm2: 21.2, label:"4 B&S"},
+    {mm2: 33.6, label:"2 B&S"},
+    {mm2: 53.5, label:"0 B&S"},
+    {mm2: 67.4, label:"00 B&S"}
+  ];
+
+  // Locked defaults
+  const rho = 0.0175;  // copper resistivity Ω·mm²/m
+  const k   = 1.25;    // safety factor
+
+  function pickCable(req){
+    if (req <= CABLES[0].mm2) return CABLES[0];
+    if (req > CABLES[CABLES.length-1].mm2) return null;
+    return CABLES.find(c => c.mm2 >= req);
+  }
+
+  function calc(){
+    const Vsys = parseFloat(document.getElementById("voltage").value);
+    const I    = parseFloat(document.getElementById("amps").value);
+    const L    = parseFloat(document.getElementById("length").value);
+    const drop = parseFloat(document.getElementById("drop").value);
+
+    const Vdrop  = Vsys * (drop/100);
+    const reqCSA = Vdrop === 0 ? 0 : (2 * L * I * rho / Vdrop) * k;
+
+    document.getElementById("vd").textContent  = Vdrop.toFixed(2);
+    document.getElementById("req").textContent = reqCSA.toFixed(2);
+
+    const pick = pickCable(reqCSA);
+    if (!pick){
+      document.getElementById("recLabel").textContent = "Consult Engineering";
+      document.getElementById("recLabel").className = "kpi warn";
+    } else {
+      document.getElementById("recLabel").textContent = `${pick.label} (${pick.mm2} mm²)`;
+      document.getElementById("recLabel").className = "kpi ok";
+    }
+  }
+
+  document.querySelectorAll("input,select").forEach(el => el.addEventListener("input", calc));
+  window.addEventListener("DOMContentLoaded", calc);
+
+  // PWA: register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./service-worker.js');
+  }
+</script>
+</body>
+</html>
