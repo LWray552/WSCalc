@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wirecalc-v1';
+const CACHE_NAME = 'wirecalc-v2';
 const ASSETS = [
   './',
   './index.html',
